@@ -239,6 +239,15 @@ public class ShadeMojo
     private String finalName;
 
     /**
+     * The root directory within the archive to write the shaded classes to.
+     * <p/>
+     * For example if you wish to shade a war and the classes should be in the WEB-INF/classes
+     * directory.
+     */
+    @Parameter
+    private String rootDirInArchive;
+
+    /**
      * The name of the shaded artifactId. So you may want to use a different artifactId and keep the standard version.
      * If the original artifactId was "foo" then the final artifact would be something like foo-1.0.jar. So if you
      * change the artifactId you might have something like foo-special-1.0.jar.
@@ -564,11 +573,13 @@ public class ShadeMojo
                                        List<Relocator> relocators, List<ResourceTransformer> resourceTransformers )
     {
         ShadeRequest shadeRequest = new ShadeRequest();
+        shadeRequest.setProjectArtifact( project.getArtifact().getFile() );
         shadeRequest.setJars( artifacts );
         shadeRequest.setUberJar( outputJar );
         shadeRequest.setFilters( filters );
         shadeRequest.setRelocators( relocators );
         shadeRequest.setResourceTransformers( resourceTransformers );
+        shadeRequest.setRootDirInArchive( rootDirInArchive );
         return shadeRequest;
     }
 

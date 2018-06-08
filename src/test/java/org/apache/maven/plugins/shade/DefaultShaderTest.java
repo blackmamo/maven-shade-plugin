@@ -160,6 +160,45 @@ public class DefaultShaderTest
         assertEquals( "__StringUtils.java", source[0] );
     }
 
+  public void testShaderWithRootDirSet()
+      throws Exception
+  {
+    DefaultShader s = newShader();
+
+    Set<File> set = new LinkedHashSet<File>();
+
+    final File projectArtifact = new File("src/test/jars/test-war-1.0-SNAPSHOT.war");
+    set.add(projectArtifact);
+
+    set.add( new File( "src/test/jars/plexus-utils-1.4.1.jar" ) );
+
+    List<Relocator> relocators = new ArrayList<Relocator>();
+
+    relocators.add( new SimpleRelocator( "org/codehaus/plexus/util/", "_plexus/util/__", null,
+        Arrays.<String> asList() ) );
+
+    List<ResourceTransformer> resourceTransformers = new ArrayList<ResourceTransformer>();
+
+    resourceTransformers.add( new ComponentsXmlResourceTransformer() );
+
+    List<Filter> filters = new ArrayList<Filter>();
+
+    File file = new File( "target/foo-relocate-class.war" );
+
+    ShadeRequest shadeRequest = new ShadeRequest();
+    shadeRequest.setProjectArtifact(projectArtifact);
+    shadeRequest.setJars( set );
+    shadeRequest.setUberJar( file );
+    shadeRequest.setFilters( filters );
+    shadeRequest.setRelocators( relocators );
+    shadeRequest.setResourceTransformers( resourceTransformers );
+    shadeRequest.setRootDirInArchive("WEB-INF/classes");
+
+    s.shade( shadeRequest );
+
+    // TODO assert that it worked
+  }
+
     private void shaderWithPattern( String shadedPattern, File jar, String[] excludes )
         throws Exception
     {

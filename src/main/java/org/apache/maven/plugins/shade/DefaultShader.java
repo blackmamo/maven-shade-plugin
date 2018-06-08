@@ -190,7 +190,7 @@ public class DefaultShader
                         try
                         {
                             shadeSingleJar( shadeRequest, resources, transformers, remapper, jos, duplicates, jar,
-                                            jarFile, entry, name );
+                                            jarFile, entry, name , shadeRequest.getProjectArtifact() == jar );
                         }
                         catch ( Exception e )
                         {
@@ -209,11 +209,20 @@ public class DefaultShader
     }
 
     private void shadeSingleJar( ShadeRequest shadeRequest, Set<String> resources,
-                                 List<ResourceTransformer> transformers, RelocatorRemapper remapper,
-                                 JarOutputStream jos, Multimap<String, File> duplicates, File jar, JarFile jarFile,
-                                 JarEntry entry, String name )
+                                List<ResourceTransformer> transformers, RelocatorRemapper remapper,
+                                JarOutputStream jos, Multimap<String, File> duplicates, File jar, JarFile jarFile,
+                                JarEntry entry, String name, boolean isProjectArtifact )
         throws IOException, MojoExecutionException
     {
+        String rootDir =
+            null != shadeRequest.getRootDirInArchive() ? shadeRequest.getRootDirInArchive() : "";
+        if ( rootDir.length() > 0 && !rootDir.endsWith( "/" ) )
+        {
+            rootDir += "/";
+        }
+
+        final String relocationPrefix = isProjectArtifact ? "" : rootDir;
+
         InputStream in = null;
         try
         {
@@ -225,38 +234,38 @@ public class DefaultShader
             {
                 // make sure dirs are created
                 String dir = mappedName.substring( 0, idx );
-                if ( !resources.contains( dir ) )
+                if ( !resources.contains( relocationPrefix + dir ) )
                 {
-                    addDirectory( resources, jos, dir );
+                    addDirectory( resources, jos, relocationPrefix + dir );
                 }
             }
 
             if ( name.endsWith( ".class" ) )
             {
-                duplicates.put( name, jar );
-                addRemappedClass( remapper, jos, jar, name, in );
+                duplicates.put( relocationPrefix + name, jar );
+                addRemappedClass( remapper, jos, jar, name, in, relocationPrefix );
             }
             else if ( shadeRequest.isShadeSourcesContent() && name.endsWith( ".java" ) )
             {
                 // Avoid duplicates
-                if ( resources.contains( mappedName ) )
+                if ( resources.contains( relocationPrefix + mappedName ) )
                 {
                     return;
                 }
 
-                addJavaSource( resources, jos, mappedName, in, shadeRequest.getRelocators() );
+                addJavaSource( resources, jos, mappedName, in, shadeRequest.getRelocators(), relocationPrefix );
             }
             else
             {
                 if ( !resourceTransformed( transformers, mappedName, in, shadeRequest.getRelocators() ) )
                 {
                     // Avoid duplicates that aren't accounted for by the resource transformers
-                    if ( resources.contains( mappedName ) )
+                    if ( resources.contains( relocationPrefix + mappedName ) )
                     {
                         return;
                     }
 
-                    addResource( resources, jos, mappedName, entry.getTime(), in );
+                    addResource( resources, jos, mappedName, entry.getTime(), in, relocationPrefix );
                 }
             }
 
@@ -269,7 +278,7 @@ public class DefaultShader
         }
     }
 
-    private void goThroughAllJarEntriesForManifestTransformer( ShadeRequest shadeRequest, Set<String> resources,
+  private void goThroughAllJarEntriesForManifestTransformer( ShadeRequest shadeRequest, Set<String> resources,
                                                                ResourceTransformer manifestTransformer,
                                                                JarOutputStream jos )
         throws IOException
@@ -414,14 +423,16 @@ public class DefaultShader
     }
 
     private void addRemappedClass( RelocatorRemapper remapper, JarOutputStream jos, File jar, String name,
-                                   InputStream is )
+                                  InputStream is, String relocationPrefix )
         throws IOException, MojoExecutionException
     {
+
+
         if ( !remapper.hasRelocators() )
         {
             try
             {
-                jos.putNextEntry( new JarEntry( name ) );
+                jos.putNextEntry( new JarEntry( relocationPrefix + name ) );
                 IOUtil.copy( is, jos );
             }
             catch ( ZipException e )
@@ -441,7 +452,18 @@ public class DefaultShader
         // that use the constant pool to determine the dependencies of a class.
         ClassWriter cw = new ClassWriter( 0 );
 
-        final String pkg = name.substring( 0, name.lastIndexOf( '/' ) + 1 );
+        final String pkg;
+        final String classDir = name.substring( 0, name.lastIndexOf( '/' ) + 1 );
+
+        if ( relocationPrefix.length() > 0 && classDir.startsWith( relocationPrefix ) )
+        {
+            pkg = classDir.substring( relocationPrefix.length() );
+        }
+        else
+        {
+            pkg = classDir;
+        }
+
         ClassVisitor cv = new ClassRemapper( cw, remapper )
         {
             @Override
@@ -478,7 +500,7 @@ public class DefaultShader
         try
         {
             // Now we put it back on so the class file is written out with the right extension.
-            jos.putNextEntry( new JarEntry( mappedName + ".class" ) );
+            jos.putNextEntry( new JarEntry( relocationPrefix + mappedName + ".class" ) );
 
             IOUtil.copy( renamedClass, jos );
         }
@@ -524,10 +546,10 @@ public class DefaultShader
     }
 
     private void addJavaSource( Set<String> resources, JarOutputStream jos, String name, InputStream is,
-                                List<Relocator> relocators )
+                                List<Relocator> relocators, String relocationPrefix )
         throws IOException
     {
-        jos.putNextEntry( new JarEntry( name ) );
+        jos.putNextEntry( new JarEntry( relocationPrefix + name ) );
 
         String sourceContent = IOUtil.toString( new InputStreamReader( is, "UTF-8" ) );
 
@@ -540,14 +562,14 @@ public class DefaultShader
         IOUtil.copy( sourceContent, writer );
         writer.flush();
 
-        resources.add( name );
+        resources.add( relocationPrefix + name );
     }
 
     private void addResource( Set<String> resources, JarOutputStream jos, String name, long lastModified,
-                              InputStream is )
+                              InputStream is, String relocationPrefix )
         throws IOException
     {
-        final JarEntry jarEntry = new JarEntry( name );
+        final JarEntry jarEntry = new JarEntry( relocationPrefix + name );
 
         jarEntry.setTime( lastModified );
 
@@ -555,7 +577,7 @@ public class DefaultShader
 
         IOUtil.copy( is, jos );
 
-        resources.add( name );
+        resources.add( relocationPrefix + name );
     }
 
     static class RelocatorRemapper

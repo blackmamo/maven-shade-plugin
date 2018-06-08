@@ -33,6 +33,7 @@ import java.util.Set;
  */
 public class ShadeRequest
 {
+    private File projectArtifact;
 
     private Set<File> jars;
 
@@ -45,6 +46,8 @@ public class ShadeRequest
     private List<ResourceTransformer> resourceTransformers;
 
     private boolean shadeSourcesContent;
+
+    private String rootDirInArchive;
 
     public Set<File> getJars()
     {
@@ -136,5 +139,25 @@ public class ShadeRequest
     public void setShadeSourcesContent( boolean shadeSourcesContent )
     {
         this.shadeSourcesContent = shadeSourcesContent;
+    }
+
+    public String getRootDirInArchive()
+    {
+        return rootDirInArchive;
+    }
+
+    public void setRootDirInArchive( String rootDirInArchive )
+    {
+        this.rootDirInArchive = rootDirInArchive;
+    }
+
+    public File getProjectArtifact()
+    {
+        return projectArtifact;
+    }
+
+    public void setProjectArtifact( File projectArtifact )
+    {
+        this.projectArtifact = projectArtifact;
     }
 }

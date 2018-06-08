@@ -18,39 +18,15 @@
  */
 package org.apache.maven.plugins.shade;
 
-import junit.framework.Test;
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
+import org.codehaus.plexus.util.*;
 
-/**
- * Unit test for simple Clazz.
- */
-public class AppTest 
-    extends TestCase
+
+public class Clazz
 {
-    /**
-     * Create the test case
-     *
-     * @param testName name of the test case
-     */
-    public AppTest( String testName )
+    public static void main( String[] args )
     {
-        super( testName );
-    }
+        System.out.println( "Hello World!" );
 
-    /**
-     * @return the suite of tests being tested
-     */
-    public static Test suite()
-    {
-        return new TestSuite( AppTest.class );
-    }
-
-    /**
-     * Rigourous Test :-)
-     */
-    public void testApp()
-    {
-        assertTrue( true );
+        StringUtils.isEmpty( "foo" );
     }
 }
